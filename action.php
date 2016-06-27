@@ -6,10 +6,25 @@
  * @author  Tiago Ferreira <tiagommferreira55@gmail.com>
  */
 
+require 'github-api-1.4.3/src/github-api.php';
+use Milo\Github;
+
 // must be run within Dokuwiki
 if(!defined('DOKU_INC')) die();
 
+
 class action_plugin_github extends DokuWiki_Action_Plugin {
+
+    private $token;
+    private $api;
+    private $fileSHA;
+
+    public function __construct() {
+      //CHANGE TOKEN
+      $this->token = new Milo\Github\OAuth\Token('CHANGE ME');
+      $this->api = new Github\Api;
+      $this->api->setToken($this->token);
+    }
 
     /**
      * Registers a callback function for a given event
@@ -20,13 +35,13 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
     public function register(Doku_Event_Handler $controller) {
 
        $controller->register_hook('COMMON_WIKIPAGE_SAVE', 'BEFORE', $this, 'handle_common_wikipage_save');
-       $controller->register_hook('IO_WIKIPAGE_READ', 'BEFORE', $this, 'handle_wikipage_read');
+       $controller->register_hook('IO_WIKIPAGE_READ', 'AFTER', $this, 'handle_wikipage_read');
 
     }
 
     /**
      * [Custom event handler which performs action]
-     *
+     *s
      * @param Doku_Event $event  event object by reference
      * @param mixed      $param  [the parameters passed as fifth argument to register_hook() when this
      *                           handler was registered]
@@ -34,14 +49,43 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
      */
 
     public function handle_common_wikipage_save(Doku_Event &$event, $param) {
-      //die(var_dump($event->data["newContent"]));
+
+      $commitMessage = $event->data["summary"];
+      $commitContent = $event->data["newContent"];
+      $data = [
+        'message' => $commitMessage,
+        'content' => base64_encode($commitContent),
+      ];
+
+      if($event->data["contentChanged"] && isset($this->fileSHA)) {
+
+        $data["sha"] = $this->fileSHA;
+
+      }
+
+      $response = $this->api->put('/repos/tiagommferreira/asso-test-2/contents/cenas.txt', $data);
+
+      $this->fileSHA = null;
+
     }
 
     public function handle_wikipage_read(Doku_Event &$event, $param) {
-      die(var_dump($event));
+
+      try {
+        $response = $this->api->get('/repos/tiagommferreira/asso-test-2/contents/cenas.txt');
+        $file = $this->api->decode($response);
+        $content = base64_decode($file->content);
+
+        $this->fileSHA = $file->sha;
+
+        $event->result = $content;
+      }
+      catch(Exception $e) {
+
+      }
+
+
     }
-
-
 
 
 }
