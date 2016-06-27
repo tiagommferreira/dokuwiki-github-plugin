@@ -1,0 +1,7 @@
+base   github
+author Tiago Ferreira
+email  tiagommferreira55@gmail.com
+date   2016-06-27
+name   github plugin
+desc   Github integration for dokuwiki
+url    https://www.youtube.com/channel/UCHsunIOaq0JUpdR0c4eX2ng
