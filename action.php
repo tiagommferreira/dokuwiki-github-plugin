@@ -20,8 +20,8 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
     private $fileSHA;
 
     public function __construct() {
-      //CHANGE TOKEN
-      $this->token = new Milo\Github\OAuth\Token('CHANGE ME');
+      //CHANGE TOKEN - https://github.com/settings/tokens
+      $this->token = new Milo\Github\OAuth\Token('de4ffd52b5ebfc4675f46c8d49c5bbb2e3b05c5a');
       $this->api = new Github\Api;
       $this->api->setToken($this->token);
     }
@@ -49,15 +49,29 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
      */
 
     public function handle_common_wikipage_save(Doku_Event &$event, $param) {
-
       $commitMessage = $event->data["summary"];
       $commitContent = $event->data["newContent"];
+
       $data = [
         'message' => $commitMessage,
         'content' => base64_encode($commitContent),
       ];
 
-      if($event->data["contentChanged"] && isset($this->fileSHA)) {
+      //if the content of the file is empty, the file has been deleted on the wiki, so delete it on the repo.
+      if($commitContent == "") {
+        $data = [
+          'message' => $commitMessage,
+          'sha' => $this->fileSHA
+        ];
+
+        $response = $this->api->delete('/repos/tiagommferreira/asso-test-2/contents/cenas.txt', $data);
+        $this->fileSHA = null;
+
+        return;
+
+      }
+      //if the file exists, update it, else create a new file
+      else if($event->data["contentChanged"] && isset($this->fileSHA)) {
 
         $data["sha"] = $this->fileSHA;
 
