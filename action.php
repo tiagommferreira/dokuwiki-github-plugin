@@ -49,6 +49,10 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
      */
 
     public function handle_common_wikipage_save(Doku_Event &$event, $param) {
+
+      $path = substr($event->data["file"], strrpos($event->data["file"], '/data/pages/') + 12);
+      $repoPath = "/repos/tiagommferreira/asso-test-2/contents/" . $path;
+
       $commitMessage = $event->data["summary"];
       $commitContent = $event->data["newContent"];
 
@@ -64,7 +68,7 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
           'sha' => $this->fileSHA
         ];
 
-        $response = $this->api->delete('/repos/tiagommferreira/asso-test-2/contents/cenas.txt', $data);
+        $response = $this->api->delete($repoPath, $data);
         $this->fileSHA = null;
 
         return;
@@ -77,7 +81,7 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
 
       }
 
-      $response = $this->api->put('/repos/tiagommferreira/asso-test-2/contents/cenas.txt', $data);
+      $response = $this->api->put($repoPath, $data);
 
       $this->fileSHA = null;
 
@@ -85,8 +89,11 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
 
     public function handle_wikipage_read(Doku_Event &$event, $param) {
 
+      $path = substr($event->data[0][0], strrpos($event->data[0][0], '/data/pages/') + 12);
+      $repoPath = "/repos/tiagommferreira/asso-test-2/contents/" . $path;
+
       try {
-        $response = $this->api->get('/repos/tiagommferreira/asso-test-2/contents/cenas.txt');
+        $response = $this->api->get($repoPath);
         $file = $this->api->decode($response);
         $content = base64_decode($file->content);
 
