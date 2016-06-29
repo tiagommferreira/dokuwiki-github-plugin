@@ -7,6 +7,9 @@
  */
 
 require 'github-api-1.4.3/src/github-api.php';
+require 'GitHubIntegration/GitHubFactory.php';
+require 'GitHubIntegration/GitHubIntegration.php';
+
 use Milo\Github;
 
 // must be run within Dokuwiki
@@ -15,15 +18,11 @@ if(!defined('DOKU_INC')) die();
 
 class action_plugin_github extends DokuWiki_Action_Plugin {
 
-    private $token;
-    private $api;
-    private $fileSHA;
+    private $github;
 
     public function __construct() {
       //CHANGE TOKEN - https://github.com/settings/tokens
-      $this->token = new Milo\Github\OAuth\Token('de4ffd52b5ebfc4675f46c8d49c5bbb2e3b05c5a');
-      $this->api = new Github\Api;
-      $this->api->setToken($this->token);
+      $this->github = GitHubFactory::create("/repos/tiagommferreira/asso-test-2/contents/", 'e83ee95dbfcf8ce6923e7be78a3bbfbca0deeb9b');
     }
 
     /**
@@ -33,10 +32,8 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
      * @return void
      */
     public function register(Doku_Event_Handler $controller) {
-
        $controller->register_hook('COMMON_WIKIPAGE_SAVE', 'BEFORE', $this, 'handle_common_wikipage_save');
        $controller->register_hook('IO_WIKIPAGE_READ', 'AFTER', $this, 'handle_wikipage_read');
-
     }
 
     /**
@@ -49,63 +46,11 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
      */
 
     public function handle_common_wikipage_save(Doku_Event &$event, $param) {
-
-      $path = substr($event->data["file"], strrpos($event->data["file"], '/data/pages/') + 12);
-      $repoPath = "/repos/tiagommferreira/asso-test-2/contents/" . $path;
-
-      $commitMessage = $event->data["summary"];
-      $commitContent = $event->data["newContent"];
-
-      $data = [
-        'message' => $commitMessage,
-        'content' => base64_encode($commitContent),
-      ];
-
-      //if the content of the file is empty, the file has been deleted on the wiki, so delete it on the repo.
-      if($commitContent == "") {
-        $data = [
-          'message' => $commitMessage,
-          'sha' => $this->fileSHA
-        ];
-
-        $response = $this->api->delete($repoPath, $data);
-        $this->fileSHA = null;
-
-        return;
-
-      }
-      //if the file exists, update it, else create a new file
-      else if($event->data["contentChanged"] && isset($this->fileSHA)) {
-
-        $data["sha"] = $this->fileSHA;
-
-      }
-
-      $response = $this->api->put($repoPath, $data);
-
-      $this->fileSHA = null;
-
+      $this->github->push($event->data["file"], $event->data["summary"], $event->data["newContent"], $event->data["contentChanged"]);
     }
 
     public function handle_wikipage_read(Doku_Event &$event, $param) {
-
-      $path = substr($event->data[0][0], strrpos($event->data[0][0], '/data/pages/') + 12);
-      $repoPath = "/repos/tiagommferreira/asso-test-2/contents/" . $path;
-
-      try {
-        $response = $this->api->get($repoPath);
-        $file = $this->api->decode($response);
-        $content = base64_decode($file->content);
-
-        $this->fileSHA = $file->sha;
-
-        $event->result = $content;
-      }
-      catch(Exception $e) {
-
-      }
-
-
+        $event->result = $this->github->pull($event->data[0][0]);
     }
 
 
