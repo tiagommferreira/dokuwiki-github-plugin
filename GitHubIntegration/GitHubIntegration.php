@@ -10,6 +10,7 @@ class GitHubIntegration
   private $fileSHA;
   private $repos;
 
+
   public function __construct($repos, $tokenString)
   {
     $this->token = new Milo\Github\OAuth\Token($tokenString);
@@ -18,43 +19,35 @@ class GitHubIntegration
     $this->repos = $repos;
   }
 
+  public function hasFileSHA(){
+    return isset($this->fileSHA);
+  }
 
-  public function push($file, $commitMessage, $commitContent, $contentChanged = false){
-    $path = substr($file, strrpos($file, '/data/pages/') + 12);
-    $repoPath = $this->repos . $path;
+  public function getFileSHA(){
+    return $this->fileSHA;
+  }
 
-    $data = [
-      'message' => $commitMessage,
-      'content' => base64_encode($commitContent),
-    ];
-
-    //if the content of the file is empty, the file has been deleted on the wiki, so delete it on the repo.
-    if($commitContent == "") {
-      $data = [
-        'message' => $commitMessage,
-        'sha' => $this->fileSHA
-      ];
-
-      $response = $this->api->delete($repoPath, $data);
-      $this->fileSHA = null;
-
-      return;
-
-    }
-    //if the file exists, update it, else create a new file
-    else if($contentChanged && isset($this->fileSHA)) {
-      $data["sha"] = $this->fileSHA;
-    }
-
-    $response = $this->api->put($repoPath, $data);
-
+  public function setFileSHA($null)
+  {
     $this->fileSHA = null;
   }
 
 
+  
+  /* GITHUB METHODS */
+
+  public function delete($file, $data){
+      $path = $this->getReposPathToFile($file);
+      return $this->api->delete($path, $data);
+  }
+
+  public function push($file, $data){
+      $path = $this->getReposPathToFile($file);
+      return $this->api->put($path, $data);
+  }
+  
   public function pull($file){
-    $path = substr($file, strrpos($file, '/data/pages/') + 12);
-    $repoPath = $this->repos . $path;
+    $repoPath = $this->getReposPathToFile($file);
     try {
       $response = $this->api->get($repoPath);
       $file = $this->api->decode($response);
@@ -68,5 +61,19 @@ class GitHubIntegration
       return "";
     }
   }
+
+
+  /* AUXILIARY METHODS */
+
+  public function getPathToFile($file){
+      return substr($file, strrpos($file, '/data/pages/') + 12);
+  }
+
+  public function getReposPathToFile($file){
+      $path = $this->getPathToFile($file);
+      return $this->repos . $path;
+  }
+
+
 }
 

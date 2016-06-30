@@ -9,6 +9,10 @@
 require 'github-api-1.4.3/src/github-api.php';
 require 'GitHubIntegration/GitHubFactory.php';
 require 'GitHubIntegration/GitHubIntegration.php';
+require 'GitHubIntegration/GitHubCommand.php';
+require 'GitHubIntegration/Commands/GitHubPullCommand.php';
+require 'GitHubIntegration/Commands/GitHubPushCommand.php';
+require 'Command.php';
 
 use Milo\Github;
 
@@ -46,11 +50,15 @@ class action_plugin_github extends DokuWiki_Action_Plugin {
      */
 
     public function handle_common_wikipage_save(Doku_Event &$event, $param) {
-      $this->github->push($event->data["file"], $event->data["summary"], $event->data["newContent"], $event->data["contentChanged"]);
+        $pushCommand = new GitHubPushCommand($this->github, $event->data["file"],
+                                             $event->data["summary"], $event->data["newContent"],
+                                             $event->data["contentChanged"]);
+        Command::callCommand($pushCommand);
     }
 
     public function handle_wikipage_read(Doku_Event &$event, $param) {
-        $event->result = $this->github->pull($event->data[0][0]);
+        $pullCommand = new GitHubPullCommand($this->github, $event->data[0][0]);
+        $event->result = Command::callCommand($pullCommand);
     }
 
 
